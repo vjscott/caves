@@ -339,8 +339,11 @@
 
             input.addEventListener('input', runSearch);
 
-            document.addEventListener('keydown', e => {
-                if (e.key === 'Escape') {
+            // Capture phase on window so Esc is handled wherever focus is, including inside
+            // the native search field, which otherwise swallows it.
+            window.addEventListener('keydown', e => {
+                if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+                    e.preventDefault();
                     input.value = '';
                     runSearch();
                     window.scrollTo(0, 0);
@@ -355,7 +358,7 @@
                 const i = stops.indexOf(document.activeElement);
                 const next = i === -1 ? (dir > 0 ? 0 : stops.length - 1) : (i + dir + stops.length) % stops.length;
                 stops[next].focus();
-            });
+            }, true);
         })();
     </script>
 
