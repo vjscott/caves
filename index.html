@@ -8,8 +8,6 @@
     
     <!-- Scripts & Styles -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         tailwind.config = {
@@ -44,21 +42,23 @@
             background-repeat: no-repeat;
         }
         #map {
-            height: 600px;
             width: 100%;
             max-width: 760px;
             margin: 0 auto;
-            z-index: 1;
+            padding: 16px;
         }
-        .leaflet-tooltip.town-label {
-            background: transparent;
-            border: none;
-            box-shadow: none;
+        #map svg { display: block; width: 100%; height: auto; }
+        #map a rect { stroke: white; stroke-width: 2; fill-opacity: 0.7; transition: fill-opacity 0.2s; }
+        #map a:hover rect, #map a:focus rect { fill-opacity: 0.95; }
+        #map a text {
             font-weight: 900;
             font-size: 11px;
             text-transform: uppercase;
-            text-shadow: 2px 2px 4px white, -2px -2px 4px white, 2px -2px 4px white, -2px 2px 4px white;
-            color: #0f172a;
+            fill: #0f172a;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 3px;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -216,12 +216,7 @@
             </a>
         `).join('');
 
-        // Map Setup
-        const map = L.map('map').setView([41.7924, -73.2086], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
+        // Town grid map: plain SVG with a link on each town, so it needs no map tiles
         const gridTowns = [
             {name: "Salisbury", r: 0, c: 0, f: "salisbury"}, {name: "North Canaan", r: 0, c: 1, f: "northcanaan"}, {name: "Norfolk", r: 0, c: 2, f: "norfolk"}, {name: "Colebrook", r: 0, c: 3, f: "colebrook"}, {name: "Barkhamsted", r: 0, c: 4, f: "barkhamsted"},
             {name: "Sharon", r: 1, c: 0, f: "sharon"}, {name: "Canaan", r: 1, c: 1, f: "canaan"}, {name: "Goshen", r: 1, c: 2, f: "goshen"}, {name: "Winchester", r: 1, c: 3, f: "winchester"}, {name: "New Hartford", r: 1, c: 4, f: "newhartford"},
@@ -233,29 +228,19 @@
 
         const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#c084fc', '#f472b6'];
 
-        const geoFeatures = gridTowns.map((t, i) => {
-            const latBase = 42.05 - (t.r * 0.08);
-            const lngBase = -73.48 + (t.c * 0.12);
-            return {
-                type: "Feature",
-                properties: { name: t.name, color: colors[i % colors.length], url: `https://megaliths-caves-and-interesting-stuff.org/second/skyweb${t.f}.html` },
-                geometry: { type: "Polygon", coordinates: [[[lngBase, latBase], [lngBase + 0.11, latBase], [lngBase + 0.11, latBase - 0.07], [lngBase, latBase - 0.07], [lngBase, latBase]]] }
-            };
-        });
+        const cellW = 110, cellH = 70, gap = 10, cols = 5, rows = 6;
 
-        const townLayer = L.geoJSON(geoFeatures, {
-            style: (f) => ({ color: 'white', weight: 2, fillColor: f.properties.color, fillOpacity: 0.7 }),
-            onEachFeature: (f, l) => {
-                l.bindTooltip(f.properties.name, { permanent: true, direction: 'center', className: 'town-label' });
-                l.on('click', () => window.location.href = f.properties.url);
-                l.on('mouseover', function() { this.setStyle({ fillOpacity: 0.9, weight: 4 }); });
-                l.on('mouseout', function() { this.setStyle({ fillOpacity: 0.7, weight: 2 }); });
-            }
-        }).addTo(map);
+        const tiles = gridTowns.map((t, i) => {
+            const x = t.c * (cellW + gap);
+            const y = t.r * (cellH + gap);
+            const url = `https://megaliths-caves-and-interesting-stuff.org/second/skyweb${t.f}.html`;
+            return `<a href="${url}" aria-label="${t.name}">
+                <rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="6" fill="${colors[i % colors.length]}" />
+                <text x="${x + cellW / 2}" y="${y + cellH / 2}" text-anchor="middle" dominant-baseline="central">${t.name.toUpperCase()}</text>
+            </a>`;
+        }).join('');
 
-        // Zoom to the town grid so the boxes fill the map instead of sitting in a small patch
-        map.invalidateSize();
-        map.fitBounds(townLayer.getBounds(), { padding: [20, 20] });
+        document.getElementById('map').innerHTML = `<svg viewBox="0 0 ${cols * (cellW + gap) - gap} ${rows * (cellH + gap) - gap}" role="img" aria-label="Litchfield County town map">${tiles}</svg>`;
     </script>
 </body>
 </html>
