@@ -84,6 +84,8 @@
         mark.site-hit { background-color: #fde047; color: #0f172a; border-radius: 3px; padding: 0 2px; box-shadow: 0 0 0 1px #facc15; }
         mark.site-hit:focus { outline: 3px solid #2563eb; outline-offset: 2px; }
         .site-filter-hidden { display: none !important; }
+        /* No bold anywhere on the page */
+        *, *::before, *::after { font-weight: 400 !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 antialiased leading-relaxed">
@@ -288,7 +290,7 @@
                 const anyHit = kids.some(hasHit);
                 kids.forEach(child => {
                     const hit = hasHit(child);
-                    const keep = hit || (anyHit && child.matches('a'));
+                    const keep = hit || (anyHit && child.matches('a, .card-links'));
                     child.classList.toggle('site-filter-hidden', !keep);
                     if (hit && !child.matches('mark.site-hit')) filter(child);
                 });
@@ -402,16 +404,18 @@
                     <h3 class="text-lg font-black text-white leading-snug">${item.t}</h3>
                     ${item.note ? `<p class="text-xs text-slate-400 font-bold uppercase mt-1">${item.note}</p>` : ''}
                 </div>
-                <a href="https://megaliths-caves-and-interesting-stuff.org/${item.h}" class="link-row link-article">
-                    <span class="link-icon" aria-hidden="true">📜</span>
-                    <span class="link-label">Article</span>
-                    <span class="link-arrow" aria-hidden="true">›</span>
-                </a>
-                <a href="https://www.google.com/maps/search/${encodeURIComponent(item.q || item.t)}" target="_blank" class="link-row link-map">
-                    <span class="link-icon" aria-hidden="true">🗺️</span>
-                    <span class="link-label">Map</span>
-                    <span class="link-arrow" aria-hidden="true">›</span>
-                </a>
+                <div class="card-links grid grid-cols-2 gap-3">
+                    <a href="https://megaliths-caves-and-interesting-stuff.org/${item.h}" class="link-row link-article">
+                        <span class="link-icon" aria-hidden="true">📜</span>
+                        <span class="link-label">Article</span>
+                        <span class="link-arrow" aria-hidden="true">›</span>
+                    </a>
+                    <a href="https://www.google.com/maps/search/${encodeURIComponent(item.q || item.t)}" target="_blank" class="link-row link-map">
+                        <span class="link-icon" aria-hidden="true">🗺️</span>
+                        <span class="link-label">Map</span>
+                        <span class="link-arrow" aria-hidden="true">›</span>
+                    </a>
+                </div>
             </div>
         `).join('');
 
