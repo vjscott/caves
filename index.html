@@ -63,9 +63,9 @@
         .link-row {
             display: flex;
             align-items: center;
-            gap: 14px;
-            min-height: 60px;
-            padding: 12px 18px;
+            gap: 6px;
+            min-height: 0;
+            padding: 6px 10px;
             border-radius: 16px;
             color: #fff;
             font-size: 1.1rem;
@@ -404,7 +404,7 @@
                     <h3 class="text-lg font-black text-white leading-snug">${item.t}</h3>
                     ${item.note ? `<p class="text-xs text-slate-400 font-bold uppercase mt-1">${item.note}</p>` : ''}
                 </div>
-                <div class="card-links grid grid-cols-2 gap-3">
+                <div class="card-links grid grid-cols-2 gap-1.5">
                     <a href="https://megaliths-caves-and-interesting-stuff.org/${item.h}" class="link-row link-article">
                         <span class="link-icon" aria-hidden="true">📜</span>
                         <span class="link-label">Article</span>
