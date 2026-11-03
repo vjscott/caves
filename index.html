@@ -82,6 +82,7 @@
         .link-arrow { font-size: 1.8rem; font-weight: 900; line-height: 1; }
         /* Page search: matches are yellow, everything that does not contain a match is hidden */
         mark.site-hit { background-color: #fde047; color: #0f172a; border-radius: 3px; padding: 0 2px; box-shadow: 0 0 0 1px #facc15; }
+        mark.site-hit:focus { outline: 3px solid #2563eb; outline-offset: 2px; }
         .site-filter-hidden { display: none !important; }
     </style>
 </head>
@@ -263,6 +264,7 @@
                             if (i % 2 === 1) {
                                 const mark = document.createElement('mark');
                                 mark.className = 'site-hit';
+                                mark.tabIndex = -1;
                                 mark.textContent = part;
                                 marks.push(mark);
                                 frag.append(mark);
@@ -275,11 +277,19 @@
                 });
             }
 
+            function hasHit(el) {
+                return el.matches('mark.site-hit') || !!el.querySelector('mark.site-hit');
+            }
+
             // Hide every element that contains no match; recurse into the ones that do.
+            // Links beside a matching block (a card's Article / Map) stay visible so Tab can reach them.
             function filter(el) {
-                Array.from(el.children).forEach(child => {
-                    const hit = child.matches('mark.site-hit') || !!child.querySelector('mark.site-hit');
-                    child.classList.toggle('site-filter-hidden', !hit);
+                const kids = Array.from(el.children);
+                const anyHit = kids.some(hasHit);
+                kids.forEach(child => {
+                    const hit = hasHit(child);
+                    const keep = hit || (anyHit && child.matches('a'));
+                    child.classList.toggle('site-filter-hidden', !keep);
                     if (hit && !child.matches('mark.site-hit')) filter(child);
                 });
             }
@@ -299,9 +309,52 @@
                 if (marks.length) marks[0].scrollIntoView({ block: 'center' });
             }
 
+            // Keyboard flow while searching. Tab cycles through: search box, then the
+            // hyperlinks of each matching card (or the match itself when it has none),
+            // and wraps back to the search box. Enter opens the focused link natively.
+            function isVisible(el) {
+                return !el.closest('.site-filter-hidden');
+            }
+
+            function targetsFor(mark) {
+                const link = mark.closest('a');
+                if (link) return [link];
+                for (let node = mark.parentElement; node && !roots.includes(node); node = node.parentElement) {
+                    const links = Array.from(node.querySelectorAll('a')).filter(isVisible);
+                    if (links.length) return links;
+                }
+                return [mark];
+            }
+
+            function tabStops() {
+                const stops = [input];
+                const seen = new Set(stops);
+                marks.forEach(mark => {
+                    targetsFor(mark).forEach(target => {
+                        if (!seen.has(target)) { seen.add(target); stops.push(target); }
+                    });
+                });
+                return stops;
+            }
+
             input.addEventListener('input', runSearch);
-            input.addEventListener('keydown', e => {
-                if (e.key === 'Escape') { input.value = ''; runSearch(); }
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    input.value = '';
+                    runSearch();
+                    window.scrollTo(0, 0);
+                    input.focus();
+                    return;
+                }
+                if (e.key !== 'Tab' || !input.value.trim()) return;
+
+                e.preventDefault();
+                const stops = tabStops();
+                const dir = e.shiftKey ? -1 : 1;
+                const i = stops.indexOf(document.activeElement);
+                const next = i === -1 ? (dir > 0 ? 0 : stops.length - 1) : (i + dir + stops.length) % stops.length;
+                stops[next].focus();
             });
         })();
     </script>
@@ -348,12 +401,12 @@
                 </div>
                 <a href="https://megaliths-caves-and-interesting-stuff.org/${item.h}" class="link-row link-article">
                     <span class="link-icon" aria-hidden="true">📜</span>
-                    <span class="link-label">Read the article</span>
+                    <span class="link-label">Article</span>
                     <span class="link-arrow" aria-hidden="true">›</span>
                 </a>
                 <a href="https://www.google.com/maps/search/${encodeURIComponent(item.q || item.t)}" target="_blank" class="link-row link-map">
                     <span class="link-icon" aria-hidden="true">🗺️</span>
-                    <span class="link-label">Show on Google Maps</span>
+                    <span class="link-label">Map</span>
                     <span class="link-arrow" aria-hidden="true">›</span>
                 </a>
             </div>
