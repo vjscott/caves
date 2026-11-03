@@ -82,6 +82,9 @@
         .link-map { background: #047857; }
         .link-icon { font-size: 1.2rem; line-height: 1; }
         .link-label { flex: 1; }
+        /* Article and Map fill the card: Article flush left, Map flush right */
+        .card-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+        .card-links > .link-row { width: 100%; min-width: 0; box-sizing: border-box; }
         .link-arrow { font-size: 1.35rem; font-weight: 900; line-height: 1; }
         /* Page search: matches are yellow, everything that does not contain a match is hidden */
         mark.site-hit { background-color: #fde047; color: #0f172a; border-radius: 3px; padding: 0 2px; box-shadow: 0 0 0 1px #facc15; }
