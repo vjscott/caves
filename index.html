@@ -80,6 +80,9 @@
         .link-icon { font-size: 1.6rem; line-height: 1; }
         .link-label { flex: 1; }
         .link-arrow { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+        /* Page search: matches are yellow, everything that does not contain a match is hidden */
+        mark.site-hit { background-color: #fde047; color: #0f172a; border-radius: 3px; padding: 0 2px; box-shadow: 0 0 0 1px #facc15; }
+        .site-filter-hidden { display: none !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 antialiased leading-relaxed">
@@ -94,7 +97,16 @@
             <a href="#map-section" class="hover:text-blue-600 transition-colors">Interactive Map</a>
         </div>
 
-        <button onclick="toggleDarkMode()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full shadow-inner border border-slate-200 dark:border-slate-700 hover:scale-110 transition-transform">
+        <div class="flex items-center gap-3">
+            <label class="site-search relative">
+                <span class="sr-only">Search this page</span>
+                <input id="site-search" type="search" autocomplete="off" placeholder="Search page…" class="w-28 md:w-64 pl-9 pr-12 py-2 text-sm rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+                </svg>
+                <span id="search-count" class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-500 pointer-events-none"></span>
+            </label>
+            <button onclick="toggleDarkMode()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full shadow-inner border border-slate-200 dark:border-slate-700 hover:scale-110 transition-transform">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
@@ -102,6 +114,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
             </svg>
         </button>
+        </div>
     </nav>
 
     <!-- Header -->
@@ -206,6 +219,92 @@
             <p class="text-sm uppercase tracking-widest font-black text-cyan-400 dark:text-cyan-300 drop-shadow-md">Documenting History & Geology Since 1996</p>
         </div>
     </footer>
+
+    <script>
+        // Live page search: typing hides everything except blocks that contain a match,
+        // and highlights each matching text in yellow. Empty query restores the page.
+        (function () {
+            const input = document.getElementById('site-search');
+            const countEl = document.getElementById('search-count');
+            const roots = ['header', 'main', 'footer'].map(sel => document.querySelector(sel)).filter(Boolean);
+            const emptyNote = document.createElement('p');
+            emptyNote.className = 'text-center font-black uppercase tracking-widest text-slate-500 py-16';
+            emptyNote.textContent = 'No matches on this page';
+            emptyNote.style.display = 'none';
+            document.querySelector('main').after(emptyNote);
+
+            let marks = [];
+
+            function clearSearch() {
+                marks.forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+                marks = [];
+                roots.forEach(root => {
+                    root.normalize();
+                    root.querySelectorAll('.site-filter-hidden').forEach(el => el.classList.remove('site-filter-hidden'));
+                });
+            }
+
+            function highlight(query) {
+                const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const test = new RegExp(escaped, 'i');
+                const split = new RegExp('(' + escaped + ')', 'gi');
+                roots.forEach(root => {
+                    const found = [];
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                    while (walker.nextNode()) {
+                        const node = walker.currentNode;
+                        if (node.parentElement.closest('svg, script, style')) continue;
+                        if (test.test(node.nodeValue)) found.push(node);
+                    }
+                    found.forEach(node => {
+                        const frag = document.createDocumentFragment();
+                        node.nodeValue.split(split).forEach((part, i) => {
+                            if (!part) return;
+                            if (i % 2 === 1) {
+                                const mark = document.createElement('mark');
+                                mark.className = 'site-hit';
+                                mark.textContent = part;
+                                marks.push(mark);
+                                frag.append(mark);
+                            } else {
+                                frag.append(document.createTextNode(part));
+                            }
+                        });
+                        node.replaceWith(frag);
+                    });
+                });
+            }
+
+            // Hide every element that contains no match; recurse into the ones that do.
+            function filter(el) {
+                Array.from(el.children).forEach(child => {
+                    const hit = child.matches('mark.site-hit') || !!child.querySelector('mark.site-hit');
+                    child.classList.toggle('site-filter-hidden', !hit);
+                    if (hit && !child.matches('mark.site-hit')) filter(child);
+                });
+            }
+
+            function runSearch() {
+                const query = input.value.trim();
+                clearSearch();
+                countEl.textContent = '';
+                emptyNote.style.display = 'none';
+                if (!query) return;
+
+                highlight(query);
+                roots.forEach(filter);
+
+                countEl.textContent = marks.length + (marks.length === 1 ? ' match' : ' matches');
+                emptyNote.style.display = marks.length ? 'none' : 'block';
+                if (marks.length) marks[0].scrollIntoView({ block: 'center' });
+            }
+
+            input.addEventListener('input', runSearch);
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Escape') { input.value = ''; runSearch(); }
+            });
+        })();
+    </script>
 
     <script>
         const links = [
